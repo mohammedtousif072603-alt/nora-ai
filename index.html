@@ -1,0 +1,74 @@
+New-Item -ItemType Directory -Force -Path static | Out-Null
+
+@'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nora</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-[#131314] text-[#E3E3E3] h-screen flex flex-col font-sans">
+  <header class="p-4 border-b border-[#2B2C2F] flex items-center justify-between">
+    <div class="text-xl font-semibold tracking-wide text-white">✨ Nora</div>
+    <div class="text-xs text-zinc-400 bg-zinc-800 px-3 py-1 rounded-full">Gemini Powered</div>
+  </header>
+  <main id="chat-container" class="flex-1 overflow-y-auto p-4 md:px-32 space-y-4">
+    <div class="text-zinc-500 text-center mt-20 text-sm">Ask Nora anything to begin...</div>
+  </main>
+  <footer class="p-4 md:px-32 pb-6">
+    <form id="chat-form" class="relative flex items-center bg-[#1E1F20] rounded-2xl border border-zinc-700">
+      <input id="user-input" type="text" placeholder="Ask anything..." class="w-full bg-transparent px-5 py-4 outline-none text-white placeholder-zinc-500 pr-14" autocomplete="off" required />
+      <button type="submit" class="absolute right-3 p-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold">▲</button>
+    </form>
+  </footer>
+  <script>
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('user-input');
+    const container = document.getElementById('chat-container');
+
+    function appendMessage(role, text = "") {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = role === 'user' ? "flex justify-end" : "flex justify-start";
+      const bubble = document.createElement('div');
+      bubble.className = role === 'user' ? "bg-[#282a2c] text-white px-5 py-3 rounded-2xl max-w-[80%]" : "text-[#E3E3E3] px-2 py-2 max-w-[90%] leading-relaxed";
+      bubble.innerHTML = marked.parse(text);
+      msgDiv.appendChild(bubble);
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+      return bubble;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage('user', text);
+      input.value = '';
+      const botBubble = appendMessage('assistant', '');
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fullText += decoder.decode(value, { stream: true });
+          botBubble.innerHTML = marked.parse(fullText);
+          container.scrollTop = container.scrollHeight;
+        }
+      } catch (err) {
+        botBubble.innerHTML = "<span class='text-red-400'>Error getting response. Check your API key.</span>";
+      }
+    });
+  </script>
+</body>
+</html>
+'@ | Out-File -Encoding utf8 static\index.html

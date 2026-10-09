@@ -1,4 +1,4 @@
-@'
+Set-Content -Path main.py -Value @"
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -53,4 +53,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def home():
     return FileResponse("static/index.html")
-'@ | Out-File -Encoding utf8 main.py
+"@
